@@ -4,13 +4,15 @@
 pipx upgrade yt-dlp >/dev/null 2>&1 || true
 
 # Define directory
-videofolder="/home/clarisse/yt-media/Video"
-audiofolder="/home/clarisse/yt-media/Audio"
+videofolder="$HOME/yt-media/Video"
+audiofolder="$HOME/yt-media/Audio"
+
+# Create directories 
+mkdir -p "$videofolder"
+mkdir -p "$audiofolder"
 
 echo "YOUTUBE DOWNLOADER"
-
-echo -e "\n1 - Video + audio\n2 - Audio only (mp3)\n3 - Change download directory"
-
+echo -e "\n1 - Video + audio\n2 - Audio only (mp3)"
 echo
 read -p "Set option: " option
 read -p "Set URL: " url
