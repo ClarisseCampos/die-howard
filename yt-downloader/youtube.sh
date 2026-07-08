@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Verify updates
-pipx upgrade yt-dlp >/dev/null 2>&1 || true
-
 # Define directory
 videofolder="$HOME/yt-media/Video"
 audiofolder="$HOME/yt-media/Audio"
