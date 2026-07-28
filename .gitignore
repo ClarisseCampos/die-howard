@@ -1,0 +1,32 @@
+# Ambiente virtual
+.venv/
+
+# Cache do Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Arquivos temporários
+*.tmp
+*.log
+
+# IDEs
+.vscode/
+.idea/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Áudios gerados
+audios/
+
+# Livros de teste
+textos/
+
+# Modelos do Piper
+models/
+
+# Arquivos grandes
+*.wav
+*.mp3
