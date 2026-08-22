@@ -4,99 +4,117 @@ import shutil
 import subprocess
 import sys
 import time
+import wave
 from rich.console import Console
+from rich.progress import Progress, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn
 
 console = Console()
 
-# 1. Configuração de Caminhos
 BASE_DIR = Path(__file__).resolve().parent
-
 TEXT_FILE = BASE_DIR / "texts" / "teste.txt"
 MODEL_FILE = BASE_DIR / "models" / "pt_BR-faber-medium.onnx"
 OUTPUT_DIR = BASE_DIR / "audios"
-OUTPUT_FILE = OUTPUT_DIR / "teste.wav"
+TEMP_DIR = BASE_DIR / "temp"
+OUTPUT_FILE = OUTPUT_DIR / "teste_final.wav"
 
 def encontrar_executavel_piper() -> Path | None:
-    local_venv_piper = Path(sys.executable).parent / "piper"
-    if local_venv_piper.exists():
-        return local_venv_piper
-
-    piper_in_path = shutil.which("piper")
-    if piper_in_path:
-        return Path(piper_in_path)
-
-    return None
+    local_venv = Path(sys.executable).parent / "piper"
+    return local_venv if local_venv.exists() else Path(shutil.which("piper") or "")
 
 PIPER_BIN = encontrar_executavel_piper()
 
-# Dicionário de Pronúncia
-REPLICACOES_PRONUNCIA = {
-    "Shakespeare": "Chêkispir",
-    "Steve": "Istív",
-    "Facebook": "Feicebuk",
-    "Python": "Paíton",
-}
-
 def normalizar_texto(texto: str) -> str:
-    """Substitui termos estrangeiros pela forma de leitura em PT-BR."""
-    texto_normalizado = texto
-    for palavra_original, pronuncia_fonetica in REPLICACOES_PRONUNCIA.items():
-        texto_normalizado = texto_normalizado.replace(palavra_original, pronuncia_fonetica)
-    return texto_normalizado
+    substituicoes = {"Shakespeare": "Chêkispir", "Steve": "Istív", "Facebook": "Feicebuk", "Python": "Paíton"}
+    for original, nova in substituicoes.items():
+        texto = texto.replace(original, nova)
+    return texto
 
-def ajustar_ritmo_e_pausas(texto: str) -> str:
-    """
-    Injeta marcas de pausa sintética no texto para melhorar o ritmo sem 
-    precisar esticar a voz artificialmente com length_scale.
-    """
-    # 1. Substitui quebras de linha/parágrafos duplos por uma pausa longa (...)
-    texto_processado = re.sub(r'\n\s*\n', '... \n', texto)
-    
-    # 2. Garante um pequeno espaço de pausa após pontos finais e pontos e vírgula
-    texto_processado = re.sub(r'(\.|\;)\s*', r'\1 ... ', texto_processado)
+def segmentar_texto(texto: str) -> list[str]:
+    texto = re.sub(r'\s+', ' ', texto).strip()
+    frases_cruas = re.split(r'(?<=[.!?])\s+', texto)
+    return [f.strip() for f in frases_cruas if len(f.strip()) > 1]
 
-    # 3. Limpa múltiplos pontos/espaços repetidos acidentalmente
-    texto_processado = re.sub(r'\.{4,}', '...', texto_processado)
-    
-    return texto_processado
+def gerar_audio_piper(texto: str, arquivo_saida: Path):
+    subprocess.run(
+        [
+            str(PIPER_BIN),
+            "--model", str(MODEL_FILE),
+            "--output_file", str(arquivo_saida),
+            "--length_scale", "1.05",
+        ],
+        input=texto.encode("utf-8"),
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+
+def concatenar_audios_com_silencio(arquivos_wav: list[Path], arquivo_final: Path, tempo_silencio_s: float = 0.4):
+    if not arquivos_wav:
+        return
+
+    with wave.open(str(arquivos_wav[0]), 'rb') as w_ref:
+        params = w_ref.getparams()
+
+    frames_silencio = int(params.framerate * tempo_silencio_s)
+    bytes_silencio = b'\x00' * (frames_silencio * params.nchannels * params.sampwidth)
+
+    with wave.open(str(arquivo_final), 'wb') as w_out:
+        w_out.setparams(params)
+        
+        for i, arq in enumerate(arquivos_wav):
+            with wave.open(str(arq), 'rb') as w_in:
+                w_out.writeframes(w_in.readframes(w_in.getnframes()))
+            
+            if i < len(arquivos_wav) - 1:
+                w_out.writeframes(bytes_silencio)
 
 def main():
     if PIPER_BIN is None or not PIPER_BIN.exists():
-        console.print("[bold red]Erro:[/bold red] Executável do Piper não foi encontrado.")
+        console.print("[bold red]Erro:[/bold red] Executável do Piper não encontrado.")
         return
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-    if not TEXT_FILE.exists():
-        console.print(f"[red]Erro:[/red] Arquivo de texto não encontrado em: {TEXT_FILE}")
-        return
+    TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
     console.print("[cyan]📖 Lendo e processando arquivo...[/cyan]")
     texto_original = TEXT_FILE.read_text(encoding="utf-8")
     
-    # Etapas da Pipeline do DieHoward
     texto_tratado = normalizar_texto(texto_original)
-    texto_com_pausas = ajustar_ritmo_e_pausas(texto_tratado)
+    frases = segmentar_texto(texto_tratado)
     
-    console.print(f"[green]✓[/green] Texto preparado para o TTS ({len(texto_com_pausas)} caracteres)")
+    console.print(f"[green]✓[/green] Texto dividido em {len(frases)} frases.")
 
     inicio = time.perf_counter()
+    arquivos_gerados = []
 
-    with console.status("[bold green]🎙 Gerando áudio...", spinner="dots"):
-        subprocess.run(
-            [
-                str(PIPER_BIN),
-                "--model", str(MODEL_FILE),
-                "--output_file", str(OUTPUT_FILE),
-                "--length_scale", "1.5", # Velocidade natural (próxima da humana)
-            ],
-            input=texto_com_pausas.encode("utf-8"),
-            check=True,
-        )
+    # Barra de carregamento customizada do Rich
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        TimeRemainingColumn(),
+        console=console,
+    ) as progress:
+        
+        tarefa = progress.add_task("[bold green]🎙 Sintetizando áudio...", total=len(frases))
+
+        for i, frase in enumerate(frases):
+            caminho_temp = TEMP_DIR / f"chunk_{i:04d}.wav"
+            gerar_audio_piper(frase, caminho_temp)
+            arquivos_gerados.append(caminho_temp)
+            
+            # Avança 1 passo na barra de progresso
+            progress.update(tarefa, advance=1)
+
+    console.print("[bold blue]🔧 Montando arquivo final com pausas...[/bold blue]")
+    concatenar_audios_com_silencio(arquivos_gerados, OUTPUT_FILE, tempo_silencio_s=0.5)
+
+    # Limpeza dos arquivos temporários
+    for arq in arquivos_gerados:
+        arq.unlink()
 
     fim = time.perf_counter()
-
-    console.print(f"[green]✓ Áudio salvo em:[/green] {OUTPUT_FILE}")
+    console.print(f"[green]✓ Áudio final salvo em:[/green] {OUTPUT_FILE}")
     console.print(f"[bold]⏱ Tempo de processamento:[/bold] {fim - inicio:.2f} segundos")
 
 if __name__ == "__main__":
