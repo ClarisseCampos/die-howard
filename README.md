@@ -11,7 +11,7 @@ O projeto ainda está em desenvolvimento, então algumas decisões de arquitetur
 ### Origem do Nome:
 O nome veio em homenagem a um monólogo do filme "Pearl" (2022) onde a atriz Mia Goth interpreta magistralmente um monólogo de mais de oito minutos, em que simula uma conversa dissecante com seu marido Howard.
 
-> "Howard... Eu te odeio tanto por me deixar aqui, às vezes espero que você morra. Sinto muito. Sinto-me péssimo admitindo isso, mas é a verdade. "
+> ["Howard... Eu te odeio tanto por me deixar aqui, às vezes espero que você morra. Sinto muito. Sinto-me péssimo admitindo isso, mas é a verdade. "](https://youtu.be/kj8UiWw2lxg)
 
 Este texto serviu de base para rastrear a evolução do projeto. Afinal ele expôs os principais desafios: o ritmo, a entonação e a pronúncia de palavras estrangeiras, como 'Howard'. Tal qual a Pearl espera que Howard morra, eu espero que os problema da pronúncia também morra, por isso "DieHoward".
 
@@ -147,7 +147,7 @@ Arquivo final
 Isso é apenas uma ideia inicial, não uma arquitetura definitiva.
 
 
-## 8. Hardware e ambiente
+## 6. Hardware e ambiente
 
 Meu ambiente principal é Linux Mint.
 
@@ -164,7 +164,7 @@ Não presuma que tenho uma GPU moderna com grande quantidade de VRAM.
 
 Sempre considere o custo computacional das soluções.
 
-## 9. Direção futura
+## 7. Direção futura
 
 No futuro, gostaria que o DieHoward pudesse evoluir de um simples TTS para um sistema de processamento de livros.
 
@@ -221,26 +221,3 @@ Isso pode posteriormente incluir recursos como:
 * retomada de processamento caso o programa seja interrompido.
 
 Mas não quero implementar tudo isso de uma vez.
-
-## 10. Como quero que você me ajude
-
-Quero trabalhar **incrementalmente**.
-
-Se eu perguntar:
-
-> "Como faço X?"
-
-Primeiro explique o conceito e depois mostre uma implementação adequada ao estágio atual do projeto.
-
-Se houver uma solução simples e outra sofisticada, apresente primeiro a simples e explique quando faria sentido migrar para a sofisticada.
-
-Se você perceber que estou tentando resolver um problema no nível errado da arquitetura, diga isso explicitamente.
-
-Também quero que você questione decisões ruins em vez de simplesmente concordar comigo.
-
-Por exemplo:
-
-> "Essa abordagem funciona, mas eu não recomendo porque..."
-
-Isso é desejável.
-
